@@ -29,11 +29,8 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 national_2020_df = pd.read_csv('2020_demographics_votes_fips.csv', sep=",", header=0)
 national_2012_df = pd.read_csv('2012_demographics_votes.csv', sep=",", header=0)
-# print(pd.concat([national_2020_df[['name10', 'state']], national_2012_df[['name10', 'state']]]).drop_duplicates(keep=False))
 
-print(national_2020_df.shape)
 national_df = national_2020_df.merge(national_2012_df, left_on=["gisjoin"], right_on=["gisjoin"], how="inner")
-print(national_df.shape)
 
 name_cols = ['name10', 'state', 'FIPS']
 
@@ -136,6 +133,9 @@ regression_df.to_csv('model_predicted_swing_vs_actual.csv', sep=',')
 ## NET VOTES
 print("AVERAGE ERROR", regression_df['difference'].abs().mean())
 
+## STATE RANKINGS
+print(regression_df.groupby(['state']).apply(lambda x: x['votes over expected'].sum()/x[raw_vote_2020_col].sum()))
+
 if args.state is not None:
     if args.state == "contiguous":
         regression_df = regression_df[~regression_df['state'].isin(['Hawaii', 'Alaska'])]
@@ -147,6 +147,7 @@ percent_above_expected = expected_net_votes/regression_df[raw_vote_2020_col].sum
 
 print(expected_net_votes, percent_above_expected)
 r2_score = sklearn.metrics.r2_score(region_df[target_col], region_df['estimated_target'])
+
 #######################################
 # PLOT WHAT'S HAPPENING
 
