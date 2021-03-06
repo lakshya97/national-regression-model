@@ -122,7 +122,7 @@ elif args.region == "Atlantic":
 
 training_data = region_df[data_cols]
 target_values = region_df[target_col]
-kfolds = KFold(n_splits=10, shuffle=True, random_state=42)
+kfolds = KFold(n_splits=5, shuffle=True, random_state=42)
 regression_model = linear_model.RidgeCV(alphas=[0.005, 0.01, 0.1], normalize=True, cv=kfolds)
 regression_model.fit(training_data, target_values)
 region_df['estimated_target'] = regression_model.predict(training_data)
