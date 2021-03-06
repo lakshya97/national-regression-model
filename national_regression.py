@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import sklearn
 from sklearn import linear_model
 import matplotlib.patches as mpatches
-from sklearn.feature_selection import RFE
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--state', type=str, help="state to map -- no entry means the entire US will be plotted, type \'contiguous\' to exclude Alaska and Hawaii")
@@ -123,8 +122,7 @@ elif args.region == "Atlantic":
 training_data = region_df[data_cols]
 target_values = region_df[target_col]
 regression_model = linear_model.Ridge(alpha=0.005, normalize=True)
-# if nonlinear:
-#     regression_model = RFE(regression_model, n_features_to_select=150, step=1)
+
 regression_model.fit(training_data, target_values)
 region_df['estimated_target'] = regression_model.predict(training_data)
 region_df['difference'] = region_df[target_col] - region_df['estimated_target']
