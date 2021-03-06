@@ -5,6 +5,7 @@ import io
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import sklearn
+from sklearn.model_selection import KFold
 from sklearn import linear_model
 import matplotlib.patches as mpatches
 
@@ -121,8 +122,8 @@ elif args.region == "Atlantic":
 
 training_data = region_df[data_cols]
 target_values = region_df[target_col]
-regression_model = linear_model.Ridge(alpha=0.005, normalize=True)
-
+kfolds = KFold(n_splits=10, shuffle=True, random_state=42)
+regression_model = linear_model.RidgeCV(alphas=[0.005, 0.01, 0.1], normalize=True, cv=kfolds)
 regression_model.fit(training_data, target_values)
 region_df['estimated_target'] = regression_model.predict(training_data)
 region_df['difference'] = region_df[target_col] - region_df['estimated_target']
