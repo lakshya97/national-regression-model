@@ -18,7 +18,6 @@ parser.add_argument('--exclude_education', action="store_true")
 parser.add_argument('--exclude_race', action="store_true")
 parser.add_argument('--exclude_income', action="store_true")
 parser.add_argument('--exclude_age', action="store_true")
-# parser.add_argument('--nonlinear', action="store_true")
 parser.add_argument('--region', type=str, help="region to regress the data against", 
     choices=['National', 'Pacific', 'Great Plains', 'Midwest', 'Sunbelt', 'South', 'Atlantic', 'New England'], default='National')
 
@@ -70,7 +69,36 @@ if not args.exclude_age:
 
 # target to regress against
 target_col = 'Swing 2016 to 2020'
-national_df = national_df[name_cols + data_cols + [target_col]]
+national_df = national_df[name_cols + data_cols + [target_col] + ['Biden 2-Party Only 2020 Margin', 'Biden 2020 Margin', 'Clinton 2016 Margin']]
+
+
+# third party
+national_df['biden_2020_2party_share'] = (1 - national_df['Biden 2-Party Only 2020 Margin'])/2
+national_df['trump_2020_2party_share'] = 1 - national_df['biden_2020_2party_share']
+national_df['biden_2020_share'] = national_df['Biden 2020 Margin']/national_df['Biden 2-Party Only 2020 Margin'] * national_df['biden_2020_2party_share']
+national_df['2020_third_party_share'] = 1 - (2 * national_df['biden_2020_share'] - national_df['Biden 2020 Margin'])
+
+national_df['clinton_2016_2party_share'] = (1 - national_df['Clinton 2-Party Only 2016 Margin'])/2
+national_df['trump_2020_2party_share'] = 1 - national_df['clinton_2016_2party_share']
+national_df['clinton_2016_share'] = national_df['Clinton 2016 Margin']/national_df['Clinton 2-Party Only 2016 Margin'] * national_df['clinton_2016_2party_share']
+national_df['2016_third_party_share'] = 1 - (2 * national_df['clinton_2016_share'] - national_df['Clinton 2016 Margin'])
+
+data_cols += ['2016_third_party_share', '2020_third_party_share']
+
+# Calculate the *change* in demographics -- we want this for our regression. Don't just use 2012 demographics themselves.
+for i in range(len(data_cols)):
+    if '2012' in data_cols[i]:
+        data_cols[i] = 'changefrom_' + data_cols[i]
+
+national_df['changefrom_2012votes'] = national_df['Total Votes 2020 (AK is Rough Estimate)'] - national_df['2012votes'] 
+national_df['changefrom_white_2012'] = national_df['White CVAP % 2018'] - national_df['white_2012']
+national_df['changefrom_black_2012'] = national_df['Black CVAP % 2018'] - national_df['black_2012']
+national_df['changefrom_hispanic_2012'] = national_df['Hispanic CVAP % 2018'] - national_df['hispanic_2012']
+national_df['changefrom_asian_2012'] = national_df['Asian CVAP % 2018'] - national_df['asian_2012']
+national_df['changefrom_native_2012'] = national_df['Native CVAP % 2018'] - national_df['native_2012']
+national_df['changefrom_medianincome_2012'] = national_df['Median Household Income 2018'] - national_df['medianincome_2012']
+national_df['changefrom_medianage_2012'] = national_df['Median Age 2018'] - national_df['medianage_2012']
+national_df['changefrom_bachelorabove_2012'] = national_df['% Bachelor Degree or Above 2018'] - national_df['bachelorabove_2012']
 
 # REGION SELECTION
 if args.region == "National":
@@ -92,16 +120,6 @@ elif args.region == "Atlantic":
 
 ############################################################
 # REGRESSION 
-
-# introduce nonlinearity
-# orig_cols = data_cols[:]
-# if args.nonlinear:
-#     print(len(orig_cols))
-#     for i in range(len(orig_cols)):
-#         for j in range(i, len(orig_cols)):
-#             nonlinear_str = 'nonlinear ' + data_cols[i] + ' ' + data_cols[j]
-#             data_cols += [nonlinear_str]
-#             region_df[nonlinear_str] = region_df[data_cols[i]] * region_df[data_cols[j]]
 
 training_data = region_df[data_cols]
 target_values = region_df[target_col]
@@ -176,7 +194,7 @@ plt.margins(0,0)
 plt.gca().xaxis.set_major_locator(plt.NullLocator())
 plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
-plt.title("Swing relative to Demographics: 2020 Presidential Election -- Regression on Education, Race, Religion, Income, Age, Urbanization, and 2016 partisanship")
+plt.title("Swing relative to Demographics: 2020 Presidential Election -- Regression on Education, Race, Religion, Income, Age, Urbanization, Third Party Voting, and 2016 partisanship")
 plt.figtext(0.80, 0.12, 'R^2 = ' + str(np.round(r2_score, 2)), horizontalalignment='right')
 plt.figtext(0.80, 0.08, '@lxeagle17', horizontalalignment='right')
 plt.figtext(0.80, 0.06, '@Mill226', horizontalalignment='right')
