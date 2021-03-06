@@ -46,10 +46,8 @@ age_col = ['Median Age 2018', 'medianage_2012']
 raw_vote_2020_col = 'Total Votes 2020 (AK is Rough Estimate)'
 
 vote_cols = [raw_vote_2020_col, '2012votes']
-data_cols = vote_cols
+data_cols = vote_cols + partisanship_col
 
-if not args.exclude_partisanship:
-    data_cols += partisanship_col
 if not args.exclude_religion:
     data_cols += religion_cols
 if not args.exclude_urbanization:
@@ -87,14 +85,19 @@ for i in range(len(data_cols)):
         data_cols[i] = 'changefrom_' + data_cols[i]
 
 national_df['changefrom_2012votes'] = national_df['Total Votes 2020 (AK is Rough Estimate)'] - national_df['2012votes'] 
-national_df['changefrom_white_2012'] = national_df['White CVAP % 2018'] - national_df['white_2012']
-national_df['changefrom_black_2012'] = national_df['Black CVAP % 2018'] - national_df['black_2012']
-national_df['changefrom_hispanic_2012'] = national_df['Hispanic CVAP % 2018'] - national_df['hispanic_2012']
-national_df['changefrom_asian_2012'] = national_df['Asian CVAP % 2018'] - national_df['asian_2012']
-national_df['changefrom_native_2012'] = national_df['Native CVAP % 2018'] - national_df['native_2012']
-national_df['changefrom_medianincome_2012'] = national_df['Median Household Income 2018'] - national_df['medianincome_2012']
-national_df['changefrom_medianage_2012'] = national_df['Median Age 2018'] - national_df['medianage_2012']
-national_df['changefrom_bachelorabove_2012'] = national_df['% Bachelor Degree or Above 2018'] - national_df['bachelorabove_2012']
+
+if not args.exclude_race:
+    national_df['changefrom_white_2012'] = national_df['White CVAP % 2018'] - national_df['white_2012']
+    national_df['changefrom_black_2012'] = national_df['Black CVAP % 2018'] - national_df['black_2012']
+    national_df['changefrom_hispanic_2012'] = national_df['Hispanic CVAP % 2018'] - national_df['hispanic_2012']
+    national_df['changefrom_asian_2012'] = national_df['Asian CVAP % 2018'] - national_df['asian_2012']
+    national_df['changefrom_native_2012'] = national_df['Native CVAP % 2018'] - national_df['native_2012']
+if not args.exclude_income:
+    national_df['changefrom_medianincome_2012'] = national_df['Median Household Income 2018'] - national_df['medianincome_2012']
+if not args.exclude_age:
+    national_df['changefrom_medianage_2012'] = national_df['Median Age 2018'] - national_df['medianage_2012']
+if not args.exclude_education:
+    national_df['changefrom_bachelorabove_2012'] = national_df['% Bachelor Degree or Above 2018'] - national_df['bachelorabove_2012']
 
 # REGION SELECTION
 if args.region == "National":
