@@ -163,29 +163,26 @@ map_df['difference'] = map_df['difference'].astype(float) * 100
 
 # BUCKET THE MARGINS
 map_df['performance_bucket'] = 0.0
-map_df.loc[map_df['difference'] > -30, 'performance_bucket'] = 1.0
-map_df.loc[map_df['difference'] > -20, 'performance_bucket'] = 2.0
-map_df.loc[map_df['difference'] > -15, 'performance_bucket'] = 3.0
-map_df.loc[map_df['difference'] > -10, 'performance_bucket'] = 4.0
-map_df.loc[map_df['difference'] > -5, 'performance_bucket'] = 5.0
-map_df.loc[map_df['difference'] > 0, 'performance_bucket'] = 6.0
+map_df.loc[map_df['difference'] > -15, 'performance_bucket'] = 1.0
+map_df.loc[map_df['difference'] > -10, 'performance_bucket'] = 2.0
+map_df.loc[map_df['difference'] > -5, 'performance_bucket'] = 3.0
+map_df.loc[map_df['difference'] > -2.5, 'performance_bucket'] = 4.0
+map_df.loc[map_df['difference'] > 0, 'performance_bucket'] = 5.0
+map_df.loc[map_df['difference'] > 2.5, 'performance_bucket'] = 6.0
 map_df.loc[map_df['difference'] > 5, 'performance_bucket'] = 7.0
 map_df.loc[map_df['difference'] > 10, 'performance_bucket'] = 8.0
 map_df.loc[map_df['difference'] > 15, 'performance_bucket'] = 9.0
-map_df.loc[map_df['difference'] > 20, 'performance_bucket'] = 10.0
-map_df.loc[map_df['difference'] > 30, 'performance_bucket'] = 11.0
 
-for i in range(12):
+for i in range(10):
     map_df.loc['dummy_' + str(i), 'performance_bucket'] = float(i)
 
 # PLOT
 f, ax = plt.subplots(1, figsize=(12, 9))
 
-cmap = plt.cm.get_cmap("RdBu", 12)
+cmap = plt.cm.get_cmap("RdBu", 10)
 ax = map_df.plot(column="performance_bucket", cmap=cmap, edgecolor="black", linewidth=0.25, ax=ax)
-ax.legend([mpatches.Patch(color=cmap(b)) for b in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]],
-           ['R > +30', 'R +20 - R +30', 'R +15 - R +20', 'R +10 - R +15', 'R +5 - R +10',
-           'R +5 - EVEN', 'EVEN - D +5', 'D +5 - D +10', 'D +10 - D +15', 'D +15 - D +20', 'D +20 - D +30', 'D > +30'], 
+ax.legend([mpatches.Patch(color=cmap(b)) for b in range(10)],
+           ['> R +15', 'R +10 - R +15', 'R +5 - R +10','R +5 - R +2.5', 'R +2.5 - EVEN', 'EVEN - D +2.5', 'D +2.5 - D +5', 'D +5 - D +10', 'D +10 - D +15', '> D+15'], 
            loc=(1.0, .18), title="Performance vs demographics",)
 
 ax.set_axis_off()
