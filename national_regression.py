@@ -11,7 +11,6 @@ from sklearn.feature_selection import RFE
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--state', type=str, help="state to map -- no entry means the entire US will be plotted, type \'contiguous\' to exclude Alaska and Hawaii")
-parser.add_argument('--exclude_partisanship', action="store_true")
 parser.add_argument('--exclude_religion', action="store_true")
 parser.add_argument('--exclude_urbanization', action="store_true")
 parser.add_argument('--exclude_education', action="store_true")
