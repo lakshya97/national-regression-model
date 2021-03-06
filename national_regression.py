@@ -8,6 +8,7 @@ import sklearn
 from sklearn.model_selection import KFold
 from sklearn import linear_model
 import matplotlib.patches as mpatches
+from sklearn.model_selection import cross_val_score
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--state', type=str, help="state to map -- no entry means the entire US will be plotted, type \'contiguous\' to exclude Alaska and Hawaii")
@@ -146,9 +147,12 @@ if args.state is not None:
 expected_net_votes = regression_df['votes over expected'].sum()
 percent_above_expected = expected_net_votes/regression_df[raw_vote_2020_col].sum()
 
-print(expected_net_votes, percent_above_expected)
-r2_score = sklearn.metrics.r2_score(region_df[target_col], region_df['estimated_target'])
 
+r2_score = regression_model.score(training_data, target_values)
+cv_accuracy = cross_val_score(regression_model, training_data, target_values, cv=5).mean()
+print("Cross Validation accuracy:", cv_accuracy)
+print("Expected Net Votes", np.round(expected_net_votes), "Percent Above Expected", percent_above_expected)
+print("R^2:", r2_score)
 #######################################
 # PLOT WHAT'S HAPPENING
 
