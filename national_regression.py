@@ -36,7 +36,7 @@ name_cols = ['name10', 'state', 'FIPS']
 
 # source data cols 
 partisanship_col = ['Clinton 2-Party Only 2016 Margin']
-religion_cols = ['Evangelical Per 1000 (2010)', 'Mainline Protestant Per 1000 (2010)', 
+religion_cols = ['Evangelical Per 1000 (2010)', 'Mainline Protestant Per 1000 (2010)', 'Catholic Per 1000 (2010)',
 'Orthodox Jewish Per 1000 (2010)', 'Mormon Per 1000 (2010)', 'Orthodox Christian Per 1000 (2010)']
 urbanization_cols = ['Rural % (2010)', 'Total Population 2018']
 race_cols = ['White CVAP % 2018', 'Black CVAP % 2018', 'Hispanic CVAP % 2018', 'Native CVAP % 2018', 'Asian CVAP % 2018', 
@@ -91,14 +91,33 @@ if not args.exclude_education:
     national_df['changefrom_bachelorabove_2012'] = national_df['% Bachelor Degree or Above 2018'] - national_df['bachelorabove_2012']
 
 ## Nonlinearity
-data_cols += ['Nonlinearity_White', 'Nonlinearity_Hispanic', 'Nonlinearity_Education', 'Nonlinearity_Education_White', 'Nonlinearity_Income_Change', 'Nonlinearity_Turnout']
+data_cols += ['Nonlinearity_White', 'Nonlinearity_Hispanic', 'Nonlinearity_Black', 'Nonlinearity_Black_White', 'Nonlinearity_Hispanic_White',
+'Nonlinearity_Education', 'Nonlinearity_Education_Black', 'Nonlinearity_Turnout', 'Nonlinearity_Turnout_Urbanization', 'Nonlinearity_Turnout_Hispanic', 'Nonlinearity_Income', 'Nonlinearity_Population',
+'Nonlinearity_Black_White_Urban', 'Nonlinearity_Hispanic_Catholic', 'Nonlinearity_White_Urban']
+
 national_df['Nonlinearity_White'] = national_df['White CVAP % 2018'] ** 2
 national_df['Nonlinearity_Hispanic'] = national_df['Hispanic CVAP % 2018'] ** 2
+national_df['Nonlinearity_Black'] = national_df['Black CVAP % 2018'] ** 2
+national_df['Nonlinearity_Black_White'] = national_df['Black CVAP % 2018'] * national_df['White CVAP % 2018']
+national_df['Nonlinearity_Hispanic_White'] = national_df['Hispanic CVAP % 2018'] * national_df['White CVAP % 2018']
 national_df['Nonlinearity_Education'] = national_df['% Bachelor Degree or Above 2018'] ** 2
-
-national_df['Nonlinearity_Education_White'] = national_df['% Bachelor Degree or Above 2018'] * national_df['White CVAP % 2018']
+national_df['Nonlinearity_Education_Black'] = national_df['% Bachelor Degree or Above 2018'] * national_df['Black CVAP % 2018']
 national_df['Nonlinearity_Income_Change'] = national_df['changefrom_medianincome_2012'] ** 2
 national_df['Nonlinearity_Turnout'] = national_df['changefrom_2012votes']/national_df['Total Population 2018']
+national_df['Nonlinearity_Turnout_Urbanization'] = national_df['Nonlinearity_Turnout'] * national_df['Rural % (2010)'] 
+national_df['Nonlinearity_Turnout_Hispanic'] = national_df['Nonlinearity_Turnout'] * national_df['Hispanic CVAP % 2018'] 
+national_df['Nonlinearity_Income'] = np.log(national_df['Median Household Income 2018']).replace(-np.inf, -1000)
+national_df['Nonlinearity_Population'] = np.log(national_df['Total Population 2018']).replace(-np.inf, -1000)
+national_df['Nonlinearity_Black_White_Urban'] = national_df['Nonlinearity_Black_White'] * national_df['Nonlinearity_Population']
+national_df['Nonlinearity_Hispanic_Catholic'] = national_df['Catholic Per 1000 (2010)'] * national_df['Hispanic CVAP % 2018']
+national_df['Nonlinearity_White_Urban'] = national_df['Rural % (2010)'] * national_df['White CVAP % 2018']
+
+
+## POPULATION CHANGE
+data_cols += ['black_pop_change', 'hispanic_pop_change', 'white_pop_change']
+national_df['black_pop_change'] = national_df['changefrom_black_2012'] * national_df['Total Population 2018']
+national_df['white_pop_change'] = national_df['changefrom_white_2012'] * national_df['Total Population 2018']
+national_df['hispanic_pop_change'] = national_df['changefrom_hispanic_2012'] * national_df['Total Population 2018']
 
 # REGION SELECTION
 if args.region == "National":
@@ -114,7 +133,7 @@ elif args.region == "Midwest":
 elif args.region == "Great Plains":
     region_df = national_df[national_df['state'].isin(['Kansas', 'Colorado', 'Oklahoma', 'Montana', 'Wyoming', 'Nebraska', 'South Dakota', 'North Dakota'])]
 elif args.region == "West":
-    region_df = national_df[national_df['state'].isin(['Montana', 'Idaho', "Utah", 'Arizona', 'Nevada', 'California', 'New Mexico', 'Washington', 'Oregon'])]
+    region_df = national_df[national_df['state'].isin(['Montana', 'Idaho', "Utah", 'Wyoming', 'Washington', 'Oregon'])]
 elif args.region == "Atlantic":
     region_df = national_df[national_df['state'].isin(['Delaware', 'New York', "Virginia", 'Pennsylvania', 'New Jersey', 'Maryland', 'District of Columbia'])]
 
@@ -211,5 +230,6 @@ plt.gca().yaxis.set_major_locator(plt.NullLocator())
 plt.title("Swing relative to Demographics: 2020 Presidential Election -- Regression on Education, Race, Religion, Income, Age, Urbanization, Third Party Voting, and 2016 partisanship")
 plt.figtext(0.80, 0.12, 'R^2 = ' + str(np.round(r2_score, 2)), horizontalalignment='right')
 plt.figtext(0.80, 0.08, '@lxeagle17', horizontalalignment='right')
-plt.figtext(0.80, 0.06, '@Mill226', horizontalalignment='right')
+plt.figtext(0.80, 0.06, '@Thorongil16', horizontalalignment='right')
+plt.figtext(0.80, 0.04, 'Source: @Mill226', horizontalalignment='right')
 plt.show()
