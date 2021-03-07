@@ -66,7 +66,6 @@ if not args.exclude_age:
 target_col = 'Swing 2016 to 2020'
 national_df = national_df[name_cols + data_cols + [target_col] + ['Biden 2-Party Only 2020 Margin', 'Biden 2020 Margin', 'Clinton 2016 Margin']]
 
-
 # third party
 national_df['clinton_2016_2party_share'] = (1 - national_df['Clinton 2-Party Only 2016 Margin'])/2
 national_df['trump_2020_2party_share'] = 1 - national_df['clinton_2016_2party_share']
@@ -94,6 +93,16 @@ if not args.exclude_age:
     national_df['changefrom_medianage_2012'] = national_df['Median Age 2018'] - national_df['medianage_2012']
 if not args.exclude_education:
     national_df['changefrom_bachelorabove_2012'] = national_df['% Bachelor Degree or Above 2018'] - national_df['bachelorabove_2012']
+
+## Nonlinearity
+data_cols += ['Nonlinearity_White', 'Nonlinearity_Hispanic', 'Nonlinearity_Education', 'Nonlinearity_Education_White', 'Nonlinearity_Education_Hispanic', 'Nonlinearity_Income_Change', 'Nonlinearity_Turnout']
+national_df['Nonlinearity_White'] = national_df['White CVAP % 2018'] ** 2
+national_df['Nonlinearity_Hispanic'] = national_df['Hispanic CVAP % 2018'] ** 2
+national_df['Nonlinearity_Education'] = national_df['% Bachelor Degree or Above 2018'] ** 2
+national_df['Nonlinearity_Education_Hispanic'] = national_df['% Bachelor Degree or Above 2018'] * national_df['Hispanic CVAP % 2018']
+national_df['Nonlinearity_Education_White'] = national_df['% Bachelor Degree or Above 2018'] * national_df['White CVAP % 2018']
+national_df['Nonlinearity_Income_Change'] = national_df['changefrom_medianincome_2012'] ** 2
+national_df['Nonlinearity_Turnout'] = national_df['changefrom_2012votes']/national_df['Total Population 2018']
 
 # REGION SELECTION
 if args.region == "National":
@@ -145,7 +154,7 @@ percent_above_expected = expected_net_votes/regression_df[raw_vote_2020_col].sum
 
 
 r2_score = regression_model.score(training_data, target_values)
-cv_accuracy = cross_val_score(regression_model, training_data, target_values, cv=5).mean()
+cv_accuracy = cross_val_score(regression_model, training_data, target_values, cv=4).mean()
 print("Cross Validation accuracy:", cv_accuracy)
 print("Expected Net Votes", np.round(expected_net_votes), "Percent Above Expected", percent_above_expected)
 print("R^2:", r2_score)
