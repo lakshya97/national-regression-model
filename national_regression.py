@@ -93,7 +93,7 @@ if not args.exclude_education:
 ## Nonlinearity
 data_cols += ['Nonlinearity_White', 'Nonlinearity_Hispanic', 'Nonlinearity_Black', 'Nonlinearity_Black_White', 'Nonlinearity_Hispanic_White',
 'Nonlinearity_Education', 'Nonlinearity_Education_Black', 'Nonlinearity_Turnout', 'Nonlinearity_Turnout_Urbanization', 'Nonlinearity_Turnout_Hispanic', 'Nonlinearity_Income', 'Nonlinearity_Population',
-'Nonlinearity_Black_White_Urban', 'Nonlinearity_Hispanic_Catholic', 'Nonlinearity_White_Urban']
+'Nonlinearity_Black_White_Urban', 'Nonlinearity_Hispanic_Catholic', 'Nonlinearity_White_Urban', 'Nonlinearity_White_Educated_Partisanship', 'Nonlinearity_Third_Party']
 
 national_df['Nonlinearity_White'] = national_df['White CVAP % 2018'] ** 2
 national_df['Nonlinearity_Hispanic'] = national_df['Hispanic CVAP % 2018'] ** 2
@@ -111,7 +111,8 @@ national_df['Nonlinearity_Population'] = np.log(national_df['Total Population 20
 national_df['Nonlinearity_Black_White_Urban'] = national_df['Nonlinearity_Black_White'] * national_df['Nonlinearity_Population']
 national_df['Nonlinearity_Hispanic_Catholic'] = national_df['Catholic Per 1000 (2010)'] * national_df['Hispanic CVAP % 2018']
 national_df['Nonlinearity_White_Urban'] = national_df['Rural % (2010)'] * national_df['White CVAP % 2018']
-
+national_df['Nonlinearity_White_Protestant'] = national_df['Mainline Protestant Per 1000 (2010)'] * national_df['White CVAP % 2018']
+national_df['Nonlinearity_White_Educated_Partisanship'] = national_df['Clinton 2-Party Only 2016 Margin'] * national_df['White CVAP % 2018'] * national_df['% Bachelor Degree or Above 2018']
 
 ## POPULATION CHANGE
 data_cols += ['black_pop_change', 'hispanic_pop_change', 'white_pop_change']
