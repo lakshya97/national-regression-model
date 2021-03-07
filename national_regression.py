@@ -31,19 +31,19 @@ national_2020_df = pd.read_csv('2020_demographics_votes_fips.csv', sep=",", head
 national_2012_df = pd.read_csv('2012_demographics_votes.csv', sep=",", header=0)
 
 national_df = national_2020_df.merge(national_2012_df, left_on=["gisjoin"], right_on=["gisjoin"], how="inner")
-
+print(national_df.columns)
 name_cols = ['name10', 'state', 'FIPS']
 
 # source data cols 
 partisanship_col = ['Clinton 2-Party Only 2016 Margin']
-religion_cols = ['Evangelical Per 1000 (2010)', 'Mainline Protestant Per 1000 (2010)', 'Catholic Per 1000 (2010)', 
-'Orthodox Jewish Per 1000 (2010)', 'Reform/Reconstructionist Jewish Per 1000 (2010)', 'Mormon Per 1000 (2010)', 'Orthodox Christian Per 1000 (2010)']
+religion_cols = ['Evangelical Per 1000 (2010)', 'Mainline Protestant Per 1000 (2010)', 
+'Orthodox Jewish Per 1000 (2010)', 'Mormon Per 1000 (2010)', 'Orthodox Christian Per 1000 (2010)']
 urbanization_cols = ['Rural % (2010)', 'Total Population 2018']
 race_cols = ['White CVAP % 2018', 'Black CVAP % 2018', 'Hispanic CVAP % 2018', 'Native CVAP % 2018', 'Asian CVAP % 2018', 
-'white_2012', 'black_2012', 'native_2012', 'hispanic_2012', 'asian_2012']
+'white_2012', 'black_2012', 'hispanic_2012']
 education_col = ['% Bachelor Degree or Above 2018', 'bachelorabove_2012']
 income_col = ['Median Household Income 2018', 'medianincome_2012']
-age_col = ['Median Age 2018', 'medianage_2012']
+age_col = ['Median Age 2018']
 raw_vote_2020_col = 'Total Votes 2020 (AK is Rough Estimate)'
 
 vote_cols = [raw_vote_2020_col, '2012votes']
@@ -85,21 +85,17 @@ if not args.exclude_race:
     national_df['changefrom_white_2012'] = national_df['White CVAP % 2018'] - national_df['white_2012']
     national_df['changefrom_black_2012'] = national_df['Black CVAP % 2018'] - national_df['black_2012']
     national_df['changefrom_hispanic_2012'] = national_df['Hispanic CVAP % 2018'] - national_df['hispanic_2012']
-    national_df['changefrom_asian_2012'] = national_df['Asian CVAP % 2018'] - national_df['asian_2012']
-    national_df['changefrom_native_2012'] = national_df['Native CVAP % 2018'] - national_df['native_2012']
 if not args.exclude_income:
     national_df['changefrom_medianincome_2012'] = national_df['Median Household Income 2018'] - national_df['medianincome_2012']
-if not args.exclude_age:
-    national_df['changefrom_medianage_2012'] = national_df['Median Age 2018'] - national_df['medianage_2012']
 if not args.exclude_education:
     national_df['changefrom_bachelorabove_2012'] = national_df['% Bachelor Degree or Above 2018'] - national_df['bachelorabove_2012']
 
 ## Nonlinearity
-data_cols += ['Nonlinearity_White', 'Nonlinearity_Hispanic', 'Nonlinearity_Education', 'Nonlinearity_Education_White', 'Nonlinearity_Education_Hispanic', 'Nonlinearity_Income_Change', 'Nonlinearity_Turnout']
+data_cols += ['Nonlinearity_White', 'Nonlinearity_Hispanic', 'Nonlinearity_Education', 'Nonlinearity_Education_White', 'Nonlinearity_Income_Change', 'Nonlinearity_Turnout']
 national_df['Nonlinearity_White'] = national_df['White CVAP % 2018'] ** 2
 national_df['Nonlinearity_Hispanic'] = national_df['Hispanic CVAP % 2018'] ** 2
 national_df['Nonlinearity_Education'] = national_df['% Bachelor Degree or Above 2018'] ** 2
-national_df['Nonlinearity_Education_Hispanic'] = national_df['% Bachelor Degree or Above 2018'] * national_df['Hispanic CVAP % 2018']
+
 national_df['Nonlinearity_Education_White'] = national_df['% Bachelor Degree or Above 2018'] * national_df['White CVAP % 2018']
 national_df['Nonlinearity_Income_Change'] = national_df['changefrom_medianincome_2012'] ** 2
 national_df['Nonlinearity_Turnout'] = national_df['changefrom_2012votes']/national_df['Total Population 2018']
@@ -136,6 +132,16 @@ region_df['difference'] = region_df[target_col] - region_df['estimated_target']
 region_df['votes over expected'] = region_df['difference'] * region_df[raw_vote_2020_col]
 regression_df = region_df[['state', 'name10', 'FIPS', 'difference', 'votes over expected', raw_vote_2020_col]]
 regression_df.to_csv('model_predicted_swing_vs_actual.csv', sep=',')
+
+## DEBUGGING FOR HELPING US FIGURE OUT 
+from regressors import stats
+print("coef_pval:\n", stats.coef_pval(regression_model, training_data, target_values))
+
+# to print summary table:
+print("\n=========== SUMMARY ===========")
+xlabels = data_cols
+stats.summary(regression_model, training_data, target_values, data_cols)
+
 
 ## NET VOTES
 print("AVERAGE ERROR", regression_df['difference'].abs().mean())
