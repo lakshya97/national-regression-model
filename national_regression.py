@@ -68,17 +68,12 @@ national_df = national_df[name_cols + data_cols + [target_col] + ['Biden 2-Party
 
 
 # third party
-national_df['biden_2020_2party_share'] = (1 - national_df['Biden 2-Party Only 2020 Margin'])/2
-national_df['trump_2020_2party_share'] = 1 - national_df['biden_2020_2party_share']
-national_df['biden_2020_share'] = national_df['Biden 2020 Margin']/national_df['Biden 2-Party Only 2020 Margin'] * national_df['biden_2020_2party_share']
-national_df['2020_third_party_share'] = 1 - (2 * national_df['biden_2020_share'] - national_df['Biden 2020 Margin'])
-
 national_df['clinton_2016_2party_share'] = (1 - national_df['Clinton 2-Party Only 2016 Margin'])/2
 national_df['trump_2020_2party_share'] = 1 - national_df['clinton_2016_2party_share']
 national_df['clinton_2016_share'] = national_df['Clinton 2016 Margin']/national_df['Clinton 2-Party Only 2016 Margin'] * national_df['clinton_2016_2party_share']
 national_df['2016_third_party_share'] = 1 - (2 * national_df['clinton_2016_share'] - national_df['Clinton 2016 Margin'])
-
-data_cols += ['2016_third_party_share', '2020_third_party_share']
+national_df['2016_third_party_share'] = national_df['2016_third_party_share'].values
+data_cols += ['2016_third_party_share']
 
 # Calculate the *change* in demographics -- we want this for our regression. Don't just use 2012 demographics themselves.
 for i in range(len(data_cols)):
@@ -123,8 +118,9 @@ elif args.region == "Atlantic":
 
 training_data = region_df[data_cols]
 target_values = region_df[target_col]
-kfolds = KFold(n_splits=5, shuffle=True, random_state=42)
-regression_model = linear_model.RidgeCV(alphas=[0.005, 0.01, 0.1], normalize=True, cv=kfolds)
+# kfolds = KFold(n_splits=5, shuffle=True, random_state=42)
+# regression_model = linear_model.RidgeCV(alphas=[0.005, 0.01, 0.1], normalize=True, cv=kfolds)
+regression_model = linear_model.Ridge(alpha=0.005)
 regression_model.fit(training_data, target_values)
 region_df['estimated_target'] = regression_model.predict(training_data)
 region_df['difference'] = region_df[target_col] - region_df['estimated_target']
