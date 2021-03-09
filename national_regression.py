@@ -59,10 +59,13 @@ else:
 
 data_cols = vote_cols + partisanship_col
 
-if not args.exclude_religion:
-    data_cols += religion_cols
 if not args.exclude_urbanization:
     data_cols += urbanization_cols
+else:
+    additional_cols += ['Total Population 2018']
+
+if not args.exclude_religion:
+    data_cols += religion_cols
 if not args.exclude_education:
     data_cols += education_col
 if not args.exclude_race:
@@ -215,7 +218,7 @@ f, ax = plt.subplots(1, figsize=(12, 9))
 cmap = plt.cm.get_cmap("RdBu", 14)
 ax = map_df.plot(column="performance_bucket", cmap=cmap, edgecolor="black", linewidth=0.25, ax=ax)
 ax.legend([mpatches.Patch(color=cmap(b)) for b in range(14)],
-           ['> R +25', 'R +20 - R +25', 'R +15 - R +20', 'R +10 - R +15', 'R +5 - R +10','R +5 - R +2.5', 'R +2.5 - EVEN', 'EVEN - D +2.5', 'D +2.5 - D +5', 'D +5 - D +10', 'D +10 - D +15', 'D+15 - D +20', 'D +20 - D +25', '> D +25'], 
+           ['> R +25', 'R +20 - R +25', 'R +15 - R +20', 'R +10 - R +15', 'R +5 - R +10','R +2.5 - R +5', 'EVEN - R +2.5', 'EVEN - D +2.5', 'D +2.5 - D +5', 'D +5 - D +10', 'D +10 - D +15', 'D+15 - D +20', 'D +20 - D +25', '> D +25'], 
            loc=(1.0, .18), title="Performance vs demographics")
 
 ax.set_axis_off()
