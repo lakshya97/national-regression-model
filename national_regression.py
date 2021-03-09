@@ -100,11 +100,14 @@ if not args.exclude_education:
 
 ## Nonlinearity
 if args.nonlinearity:
-    data_cols += ['county_diversity_black_white','county_diversity_hispanic_white']
-    national_df['county_diversity_black_white'] = national_df['Black CVAP % 2018'] * national_df['White CVAP % 2018']
-    national_df['county_diversity_hispanic_white'] = national_df['Hispanic CVAP % 2018'] * national_df['White CVAP % 2018']
-    national_df['Median Household Income 2018'] = np.log(national_df['Median Household Income 2018']).replace(-np.inf, -1000)
-    national_df['Total Population 2018'] = np.log(national_df['Total Population 2018']).replace(-np.inf, -1000)
+    if not args.exclude_race:
+        data_cols += ['county_diversity_black_white','county_diversity_hispanic_white']
+        national_df['county_diversity_black_white'] = national_df['Black CVAP % 2018'] * national_df['White CVAP % 2018']
+        national_df['county_diversity_hispanic_white'] = national_df['Hispanic CVAP % 2018'] * national_df['White CVAP % 2018']
+    if not args.exclude_income:
+        national_df['Median Household Income 2018'] = np.log(national_df['Median Household Income 2018']).replace(-np.inf, -1000)
+    if not args.exclude_urbanization:
+        national_df['Total Population 2018'] = np.log(national_df['Total Population 2018']).replace(-np.inf, -1000)
 
 ## POPULATION CHANGE
 if not args.exclude_race:
