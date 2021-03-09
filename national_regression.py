@@ -20,6 +20,8 @@ parser.add_argument('--exclude_income', action="store_true")
 parser.add_argument('--exclude_age', action="store_true")
 parser.add_argument('--region', type=str, help="region to regress the data against", 
     choices=['National', 'Pacific', 'Great Plains', 'Midwest', 'Sunbelt', 'South', 'Atlantic', 'New England'], default='National')
+parser.add_argument('--nonlinearity', action="store_true")
+parser.add_argument('--target', choices=['swing', 'margin'], default='swing')
 
 args = parser.parse_args()
 
@@ -29,13 +31,14 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 national_2020_df = pd.read_csv('2020_demographics_votes_fips.csv', sep=",", header=0)
 national_2012_df = pd.read_csv('2012_demographics_votes.csv', sep=",", header=0)
+swing_df = pd.read_csv('2012 to 2016 swing.csv', sep=",", header=0)
 
-national_df = national_2020_df.merge(national_2012_df, left_on=["gisjoin"], right_on=["gisjoin"], how="inner")
-print(national_df.columns)
+national_df = national_2020_df.merge(national_2012_df, left_on=["gisjoin"], right_on=["gisjoin"], how="inner").merge(swing_df, left_on=["gisjoin"], right_on=["gisjoin"], how="inner")
+
 name_cols = ['name10', 'state', 'FIPS']
 
-# source data cols 
-partisanship_col = ['Clinton 2-Party Only 2016 Margin']
+# source data cols
+partisanship_col = ['Clinton 2-Party Only 2016 Margin', '2012 to 2016 2-Party Swing']
 religion_cols = ['Evangelical Per 1000 (2010)', 'Mainline Protestant Per 1000 (2010)', 'Catholic Per 1000 (2010)',
 'Orthodox Jewish Per 1000 (2010)', 'Mormon Per 1000 (2010)', 'Orthodox Christian Per 1000 (2010)']
 urbanization_cols = ['Rural % (2010)', 'Total Population 2018']
@@ -46,7 +49,14 @@ income_col = ['Median Household Income 2018', 'medianincome_2012']
 age_col = ['Median Age 2018']
 raw_vote_2020_col = 'Total Votes 2020 (AK is Rough Estimate)'
 
-vote_cols = [raw_vote_2020_col, '2012votes']
+vote_cols = ['2012votes']
+additional_cols = ['Trump 2016 %', 'Clinton 2016 %']
+
+if args.target == 'swing':
+    vote_cols += [raw_vote_2020_col]
+else:
+    additional_cols += [raw_vote_2020_col]
+
 data_cols = vote_cols + partisanship_col
 
 if not args.exclude_religion:
@@ -63,23 +73,24 @@ if not args.exclude_age:
     data_cols += age_col
 
 # target to regress against
-target_col = 'Swing 2016 to 2020'
-national_df = national_df[name_cols + data_cols + [target_col] + ['Biden 2-Party Only 2020 Margin', 'Biden 2020 Margin', 'Clinton 2016 Margin']]
+if args.target == 'swing':
+    target_col = 'Swing 2016 to 2020'
+else:
+    target_col = 'Biden 2-Party Only 2020 Margin'
+
+national_df = national_df[name_cols + data_cols + [target_col] + additional_cols]
 
 # third party
-national_df['clinton_2016_2party_share'] = (1 - national_df['Clinton 2-Party Only 2016 Margin'])/2
-national_df['trump_2020_2party_share'] = 1 - national_df['clinton_2016_2party_share']
-national_df['clinton_2016_share'] = national_df['Clinton 2016 Margin']/national_df['Clinton 2-Party Only 2016 Margin'] * national_df['clinton_2016_2party_share']
-national_df['2016_third_party_share'] = 1 - (2 * national_df['clinton_2016_share'] - national_df['Clinton 2016 Margin'])
-national_df['2016_third_party_share'] = national_df['2016_third_party_share'].values
+national_df['2016_third_party_share'] = 1 - (national_df['Trump 2016 %'] + national_df['Clinton 2016 %'])
 data_cols += ['2016_third_party_share']
 
 # Calculate the *change* in demographics -- we want this for our regression. Don't just use 2012 demographics themselves.
 for i in range(len(data_cols)):
-    if '2012' in data_cols[i]:
+    if '_2012' in data_cols[i]:
         data_cols[i] = 'changefrom_' + data_cols[i]
 
-national_df['changefrom_2012votes'] = national_df['Total Votes 2020 (AK is Rough Estimate)'] - national_df['2012votes'] 
+national_df['2012_voting_rate'] = national_df['2012votes']/national_df['Total Population 2018']
+data_cols += ['2012_voting_rate']
 
 if not args.exclude_race:
     national_df['changefrom_white_2012'] = national_df['White CVAP % 2018'] - national_df['white_2012']
@@ -91,34 +102,19 @@ if not args.exclude_education:
     national_df['changefrom_bachelorabove_2012'] = national_df['% Bachelor Degree or Above 2018'] - national_df['bachelorabove_2012']
 
 ## Nonlinearity
-data_cols += ['Nonlinearity_White', 'Nonlinearity_Hispanic', 'Nonlinearity_Black', 'Nonlinearity_Black_White', 'Nonlinearity_Hispanic_White',
-'Nonlinearity_Education', 'Nonlinearity_Education_Black', 'Nonlinearity_Turnout', 'Nonlinearity_Turnout_Urbanization', 'Nonlinearity_Turnout_Hispanic', 'Nonlinearity_Income', 'Nonlinearity_Population',
-'Nonlinearity_Black_White_Urban', 'Nonlinearity_Hispanic_Catholic', 'Nonlinearity_White_Urban', 'Nonlinearity_White_Educated_Partisanship', 'Nonlinearity_Third_Party']
-
-national_df['Nonlinearity_White'] = national_df['White CVAP % 2018'] ** 2
-national_df['Nonlinearity_Hispanic'] = national_df['Hispanic CVAP % 2018'] ** 2
-national_df['Nonlinearity_Black'] = national_df['Black CVAP % 2018'] ** 2
-national_df['Nonlinearity_Black_White'] = national_df['Black CVAP % 2018'] * national_df['White CVAP % 2018']
-national_df['Nonlinearity_Hispanic_White'] = national_df['Hispanic CVAP % 2018'] * national_df['White CVAP % 2018']
-national_df['Nonlinearity_Education'] = national_df['% Bachelor Degree or Above 2018'] ** 2
-national_df['Nonlinearity_Education_Black'] = national_df['% Bachelor Degree or Above 2018'] * national_df['Black CVAP % 2018']
-national_df['Nonlinearity_Income_Change'] = national_df['changefrom_medianincome_2012'] ** 2
-national_df['Nonlinearity_Turnout'] = national_df['changefrom_2012votes']/national_df['Total Population 2018']
-national_df['Nonlinearity_Turnout_Urbanization'] = national_df['Nonlinearity_Turnout'] * national_df['Rural % (2010)'] 
-national_df['Nonlinearity_Turnout_Hispanic'] = national_df['Nonlinearity_Turnout'] * national_df['Hispanic CVAP % 2018'] 
-national_df['Nonlinearity_Income'] = np.log(national_df['Median Household Income 2018']).replace(-np.inf, -1000)
-national_df['Nonlinearity_Population'] = np.log(national_df['Total Population 2018']).replace(-np.inf, -1000)
-national_df['Nonlinearity_Black_White_Urban'] = national_df['Nonlinearity_Black_White'] * national_df['Nonlinearity_Population']
-national_df['Nonlinearity_Hispanic_Catholic'] = national_df['Catholic Per 1000 (2010)'] * national_df['Hispanic CVAP % 2018']
-national_df['Nonlinearity_White_Urban'] = national_df['Rural % (2010)'] * national_df['White CVAP % 2018']
-national_df['Nonlinearity_White_Protestant'] = national_df['Mainline Protestant Per 1000 (2010)'] * national_df['White CVAP % 2018']
-national_df['Nonlinearity_White_Educated_Partisanship'] = national_df['Clinton 2-Party Only 2016 Margin'] * national_df['White CVAP % 2018'] * national_df['% Bachelor Degree or Above 2018']
+if args.nonlinearity:
+    data_cols += ['county_diversity_black_white','county_diversity_hispanic_white']
+    national_df['county_diversity_black_white'] = national_df['Black CVAP % 2018'] * national_df['White CVAP % 2018']
+    national_df['county_diversity_hispanic_white'] = national_df['Hispanic CVAP % 2018'] * national_df['White CVAP % 2018']
+    national_df['Median Household Income 2018'] = np.log(national_df['Median Household Income 2018']).replace(-np.inf, -1000)
+    national_df['Total Population 2018'] = np.log(national_df['Total Population 2018']).replace(-np.inf, -1000)
 
 ## POPULATION CHANGE
-data_cols += ['black_pop_change', 'hispanic_pop_change', 'white_pop_change']
-national_df['black_pop_change'] = national_df['changefrom_black_2012'] * national_df['Total Population 2018']
-national_df['white_pop_change'] = national_df['changefrom_white_2012'] * national_df['Total Population 2018']
-national_df['hispanic_pop_change'] = national_df['changefrom_hispanic_2012'] * national_df['Total Population 2018']
+if not args.exclude_race:
+    data_cols += ['black_pop_change', 'hispanic_pop_change', 'white_pop_change']
+    national_df['black_pop_change'] = national_df['changefrom_black_2012'] * national_df['Total Population 2018']
+    national_df['white_pop_change'] = national_df['changefrom_white_2012'] * national_df['Total Population 2018']
+    national_df['hispanic_pop_change'] = national_df['changefrom_hispanic_2012'] * national_df['Total Population 2018']
 
 # REGION SELECTION
 if args.region == "National":
@@ -138,14 +134,15 @@ elif args.region == "West":
 elif args.region == "Atlantic":
     region_df = national_df[national_df['state'].isin(['Delaware', 'New York', "Virginia", 'Pennsylvania', 'New Jersey', 'Maryland', 'District of Columbia'])]
 
+
+print(data_cols)
 ############################################################
 # REGRESSION 
-
 training_data = region_df[data_cols]
 target_values = region_df[target_col]
 # kfolds = KFold(n_splits=5, shuffle=True, random_state=42)
 # regression_model = linear_model.RidgeCV(alphas=[0.005, 0.01, 0.1], normalize=True, cv=kfolds)
-regression_model = linear_model.Ridge(alpha=0.005)
+regression_model = linear_model.Ridge(alpha=0.05)
 regression_model.fit(training_data, target_values)
 region_df['estimated_target'] = regression_model.predict(training_data)
 region_df['difference'] = region_df[target_col] - region_df['estimated_target']
@@ -164,7 +161,8 @@ stats.summary(regression_model, training_data, target_values, data_cols)
 
 
 ## NET VOTES
-print("AVERAGE ERROR", regression_df['difference'].abs().mean())
+avg_error = regression_df['difference'].abs().mean()
+print("AVERAGE ERROR", avg_error)
 
 ## STATE RANKINGS
 print(regression_df.groupby(['state']).apply(lambda x: x['votes over expected'].sum()/x[raw_vote_2020_col].sum()))
@@ -197,26 +195,30 @@ map_df['difference'] = map_df['difference'].astype(float) * 100
 
 # BUCKET THE MARGINS
 map_df['performance_bucket'] = 0.0
-map_df.loc[map_df['difference'] > -15, 'performance_bucket'] = 1.0
-map_df.loc[map_df['difference'] > -10, 'performance_bucket'] = 2.0
-map_df.loc[map_df['difference'] > -5, 'performance_bucket'] = 3.0
-map_df.loc[map_df['difference'] > -2.5, 'performance_bucket'] = 4.0
-map_df.loc[map_df['difference'] > 0, 'performance_bucket'] = 5.0
-map_df.loc[map_df['difference'] > 2.5, 'performance_bucket'] = 6.0
-map_df.loc[map_df['difference'] > 5, 'performance_bucket'] = 7.0
-map_df.loc[map_df['difference'] > 10, 'performance_bucket'] = 8.0
-map_df.loc[map_df['difference'] > 15, 'performance_bucket'] = 9.0
+map_df.loc[map_df['difference'] > -25, 'performance_bucket'] = 1.0
+map_df.loc[map_df['difference'] > -20, 'performance_bucket'] = 2.0
+map_df.loc[map_df['difference'] > -15, 'performance_bucket'] = 3.0
+map_df.loc[map_df['difference'] > -10, 'performance_bucket'] = 4.0
+map_df.loc[map_df['difference'] > -5, 'performance_bucket'] = 5.0
+map_df.loc[map_df['difference'] > -2.5, 'performance_bucket'] = 6.0
+map_df.loc[map_df['difference'] > 0, 'performance_bucket'] = 7.0
+map_df.loc[map_df['difference'] > 2.5, 'performance_bucket'] = 8.0
+map_df.loc[map_df['difference'] > 5, 'performance_bucket'] = 9.0
+map_df.loc[map_df['difference'] > 10, 'performance_bucket'] = 10.0
+map_df.loc[map_df['difference'] > 15, 'performance_bucket'] = 11.0
+map_df.loc[map_df['difference'] > 20, 'performance_bucket'] = 12.0
+map_df.loc[map_df['difference'] > 25, 'performance_bucket'] = 13.0
 
-for i in range(10):
+for i in range(14):
     map_df.loc['dummy_' + str(i), 'performance_bucket'] = float(i)
 
 # PLOT
 f, ax = plt.subplots(1, figsize=(12, 9))
 
-cmap = plt.cm.get_cmap("RdBu", 10)
+cmap = plt.cm.get_cmap("RdBu", 14)
 ax = map_df.plot(column="performance_bucket", cmap=cmap, edgecolor="black", linewidth=0.25, ax=ax)
-ax.legend([mpatches.Patch(color=cmap(b)) for b in range(10)],
-           ['> R +15', 'R +10 - R +15', 'R +5 - R +10','R +5 - R +2.5', 'R +2.5 - EVEN', 'EVEN - D +2.5', 'D +2.5 - D +5', 'D +5 - D +10', 'D +10 - D +15', '> D+15'], 
+ax.legend([mpatches.Patch(color=cmap(b)) for b in range(14)],
+           ['> R +25', 'R +20 - R +25', 'R +15 - R +20', 'R +10 - R +15', 'R +5 - R +10','R +5 - R +2.5', 'R +2.5 - EVEN', 'EVEN - D +2.5', 'D +2.5 - D +5', 'D +5 - D +10', 'D +10 - D +15', 'D+15 - D +20', 'D +20 - D +25', '> D +25'], 
            loc=(1.0, .18), title="Performance vs demographics",)
 
 ax.set_axis_off()
@@ -228,8 +230,9 @@ plt.margins(0,0)
 plt.gca().xaxis.set_major_locator(plt.NullLocator())
 plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
-plt.title("Swing relative to Demographics: 2020 Presidential Election -- Regression on Education, Race, Religion, Income, Age, Urbanization, Third Party Voting, and 2016 partisanship")
-plt.figtext(0.80, 0.12, 'R^2 = ' + str(np.round(r2_score, 2)), horizontalalignment='right')
+plt.title(args.target.title() + " relative to Demographics: 2020 Presidential Election -- Regression on Education, Race, Religion, Income, Age, Urbanization, Trends, and 2016 partisanship")
+plt.figtext(0.80, 0.14, 'R^2 = ' + str(np.round(r2_score, 2)), horizontalalignment='right')
+plt.figtext(0.80, 0.12, 'Average County Error = ' + str(np.round(avg_error, 4) * 100) + '%' , horizontalalignment='right')
 plt.figtext(0.80, 0.08, '@lxeagle17', horizontalalignment='right')
 plt.figtext(0.80, 0.06, '@Thorongil16', horizontalalignment='right')
 plt.figtext(0.80, 0.04, 'Source: @Mill226', horizontalalignment='right')
