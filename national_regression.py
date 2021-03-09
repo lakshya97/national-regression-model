@@ -21,7 +21,8 @@ parser.add_argument('--exclude_age', action="store_true")
 parser.add_argument('--region', type=str, help="region to regress the data against", 
     choices=['National', 'Pacific', 'Great Plains', 'Midwest', 'Sunbelt', 'South', 'Atlantic', 'New England'], default='National')
 parser.add_argument('--nonlinearity', action="store_true")
-parser.add_argument('--target', choices=['swing', 'margin'], default='swing')
+parser.add_argument('--target', choices=['swing', 'margin'], default='margin')
+parser.add_argument('--debug', action="store_true")
 
 args = parser.parse_args()
 
@@ -42,15 +43,14 @@ partisanship_col = ['Clinton 2-Party Only 2016 Margin', '2012 to 2016 2-Party Sw
 religion_cols = ['Evangelical Per 1000 (2010)', 'Mainline Protestant Per 1000 (2010)', 'Catholic Per 1000 (2010)',
 'Orthodox Jewish Per 1000 (2010)', 'Mormon Per 1000 (2010)', 'Orthodox Christian Per 1000 (2010)']
 urbanization_cols = ['Rural % (2010)', 'Total Population 2018']
-race_cols = ['White CVAP % 2018', 'Black CVAP % 2018', 'Hispanic CVAP % 2018', 'Native CVAP % 2018', 'Asian CVAP % 2018', 
-'white_2012', 'black_2012', 'hispanic_2012']
+race_cols = ['White CVAP % 2018', 'Black CVAP % 2018', 'Hispanic CVAP % 2018', 'Native CVAP % 2018', 'Asian CVAP % 2018']
 education_col = ['% Bachelor Degree or Above 2018', 'bachelorabove_2012']
 income_col = ['Median Household Income 2018', 'medianincome_2012']
 age_col = ['Median Age 2018']
 raw_vote_2020_col = 'Total Votes 2020 (AK is Rough Estimate)'
 
 vote_cols = ['2012votes']
-additional_cols = ['Trump 2016 %', 'Clinton 2016 %']
+additional_cols = ['Trump 2016 %', 'Clinton 2016 %', 'white_2012', 'black_2012', 'hispanic_2012']
 
 if args.target == 'swing':
     vote_cols += [raw_vote_2020_col]
@@ -84,10 +84,6 @@ national_df = national_df[name_cols + data_cols + [target_col] + additional_cols
 national_df['2016_third_party_share'] = 1 - (national_df['Trump 2016 %'] + national_df['Clinton 2016 %'])
 data_cols += ['2016_third_party_share']
 
-# Calculate the *change* in demographics -- we want this for our regression. Don't just use 2012 demographics themselves.
-for i in range(len(data_cols)):
-    if '_2012' in data_cols[i]:
-        data_cols[i] = 'changefrom_' + data_cols[i]
 
 national_df['2012_voting_rate'] = national_df['2012votes']/national_df['Total Population 2018']
 data_cols += ['2012_voting_rate']
@@ -96,8 +92,6 @@ if not args.exclude_race:
     national_df['changefrom_white_2012'] = national_df['White CVAP % 2018'] - national_df['white_2012']
     national_df['changefrom_black_2012'] = national_df['Black CVAP % 2018'] - national_df['black_2012']
     national_df['changefrom_hispanic_2012'] = national_df['Hispanic CVAP % 2018'] - national_df['hispanic_2012']
-if not args.exclude_income:
-    national_df['changefrom_medianincome_2012'] = national_df['Median Household Income 2018'] - national_df['medianincome_2012']
 if not args.exclude_education:
     national_df['changefrom_bachelorabove_2012'] = national_df['% Bachelor Degree or Above 2018'] - national_df['bachelorabove_2012']
 
@@ -134,38 +128,37 @@ elif args.region == "West":
 elif args.region == "Atlantic":
     region_df = national_df[national_df['state'].isin(['Delaware', 'New York', "Virginia", 'Pennsylvania', 'New Jersey', 'Maryland', 'District of Columbia'])]
 
+####################
+# REGRESSION       #
+####################
 
-print(data_cols)
-############################################################
-# REGRESSION 
 training_data = region_df[data_cols]
 target_values = region_df[target_col]
-# kfolds = KFold(n_splits=5, shuffle=True, random_state=42)
-# regression_model = linear_model.RidgeCV(alphas=[0.005, 0.01, 0.1], normalize=True, cv=kfolds)
 regression_model = linear_model.Ridge(alpha=0.05)
 regression_model.fit(training_data, target_values)
 region_df['estimated_target'] = regression_model.predict(training_data)
 region_df['difference'] = region_df[target_col] - region_df['estimated_target']
 region_df['votes over expected'] = region_df['difference'] * region_df[raw_vote_2020_col]
-regression_df = region_df[['state', 'name10', 'FIPS', 'difference', 'votes over expected', raw_vote_2020_col]]
-regression_df.to_csv('model_predicted_swing_vs_actual.csv', sep=',')
+regression_df = region_df[['state', 'name10', 'FIPS', 'difference', 'votes over expected', target_col, 'estimated_target', raw_vote_2020_col]]
+regression_df.to_csv('model_predicted_vs_actual.csv', sep=',')
 
-## DEBUGGING FOR HELPING US FIGURE OUT 
-from regressors import stats
-print("coef_pval:\n", stats.coef_pval(regression_model, training_data, target_values))
+if args.debug:
+    ## DEBUGGING FOR HELPING US FIGURE OUT WHAT'S HAPPENING
+    from regressors import stats
+    print("coef_pval:\n", stats.coef_pval(regression_model, training_data, target_values))
 
-# to print summary table:
-print("\n=========== SUMMARY ===========")
-xlabels = data_cols
-stats.summary(regression_model, training_data, target_values, data_cols)
+    # to print summary table:
+    print("\n=========== SUMMARY ===========")
+    xlabels = data_cols
+    stats.summary(regression_model, training_data, target_values, data_cols)
 
 
 ## NET VOTES
 avg_error = regression_df['difference'].abs().mean()
-print("AVERAGE ERROR", avg_error)
 
 ## STATE RANKINGS
-print(regression_df.groupby(['state']).apply(lambda x: x['votes over expected'].sum()/x[raw_vote_2020_col].sum()))
+print("BIDEN PERFORMANCE ABOVE EXPECTED (NET PERCENT)")
+print(regression_df.groupby(['state']).apply(lambda x: np.round(x['votes over expected'].sum()/x[raw_vote_2020_col].sum(), 4) * 100))
 
 if args.state is not None:
     if args.state == "contiguous":
@@ -178,13 +171,17 @@ percent_above_expected = expected_net_votes/regression_df[raw_vote_2020_col].sum
 
 
 r2_score = regression_model.score(training_data, target_values)
-cv_accuracy = cross_val_score(regression_model, training_data, target_values, cv=4).mean()
-print("Cross Validation accuracy:", cv_accuracy)
-print("Expected Net Votes", np.round(expected_net_votes), "Percent Above Expected", percent_above_expected)
+
+if args.debug:
+    cv_accuracy = cross_val_score(regression_model, training_data, target_values, cv=4).mean()
+    print("Cross Validation accuracy:", cv_accuracy)
+
 print("R^2:", r2_score)
+print("AVERAGE ERROR, COUNTY PARTISAN MARGIN:", str(np.round(avg_error * 100, 4)) + '%')
+print("Expected Net Votes", np.round(expected_net_votes), "Percent Above Expected", percent_above_expected)
+
 #######################################
 # PLOT WHAT'S HAPPENING
-
 map_df = gpd.read_file("national/cb_2018_us_county_500k.shp")
 map_df = map_df.to_crs(epsg=3857)
 map_df['GEOID'] = map_df['GEOID'].astype(int)
@@ -219,7 +216,7 @@ cmap = plt.cm.get_cmap("RdBu", 14)
 ax = map_df.plot(column="performance_bucket", cmap=cmap, edgecolor="black", linewidth=0.25, ax=ax)
 ax.legend([mpatches.Patch(color=cmap(b)) for b in range(14)],
            ['> R +25', 'R +20 - R +25', 'R +15 - R +20', 'R +10 - R +15', 'R +5 - R +10','R +5 - R +2.5', 'R +2.5 - EVEN', 'EVEN - D +2.5', 'D +2.5 - D +5', 'D +5 - D +10', 'D +10 - D +15', 'D+15 - D +20', 'D +20 - D +25', '> D +25'], 
-           loc=(1.0, .18), title="Performance vs demographics",)
+           loc=(1.0, .18), title="Performance vs demographics")
 
 ax.set_axis_off()
 
@@ -231,9 +228,9 @@ plt.gca().xaxis.set_major_locator(plt.NullLocator())
 plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
 plt.title(args.target.title() + " relative to Demographics: 2020 Presidential Election -- Regression on Education, Race, Religion, Income, Age, Urbanization, Trends, and 2016 partisanship")
-plt.figtext(0.80, 0.14, 'R^2 = ' + str(np.round(r2_score, 2)), horizontalalignment='right')
-plt.figtext(0.80, 0.12, 'Average County Error = ' + str(np.round(avg_error, 4) * 100) + '%' , horizontalalignment='right')
-plt.figtext(0.80, 0.08, '@lxeagle17', horizontalalignment='right')
-plt.figtext(0.80, 0.06, '@Thorongil16', horizontalalignment='right')
-plt.figtext(0.80, 0.04, 'Source: @Mill226', horizontalalignment='right')
+plt.figtext(0.90, 0.14, 'R^2 = ' + str(np.round(r2_score, 2)), horizontalalignment='left')
+plt.figtext(0.90, 0.11, 'Average County Error = ' + str(np.round(avg_error, 4) * 100) + '%' , horizontalalignment='left')
+plt.figtext(0.90, 0.08, '@lxeagle17', horizontalalignment='left')
+plt.figtext(0.90, 0.05, '@Thorongil16', horizontalalignment='left')
+plt.figtext(0.90, 0.02, 'Source: @Mill226', horizontalalignment='left')
 plt.show()
