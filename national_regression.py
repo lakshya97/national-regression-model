@@ -44,13 +44,13 @@ religion_cols = ['Evangelical Per 1000 (2010)', 'Mainline Protestant Per 1000 (2
 'Orthodox Jewish Per 1000 (2010)', 'Mormon Per 1000 (2010)', 'Orthodox Christian Per 1000 (2010)']
 urbanization_cols = ['Rural % (2010)', 'Total Population 2018']
 race_cols = ['White CVAP % 2018', 'Black CVAP % 2018', 'Hispanic CVAP % 2018', 'Native CVAP % 2018', 'Asian CVAP % 2018']
-education_col = ['% Bachelor Degree or Above 2018', 'bachelorabove_2012']
+education_col = ['% Bachelor Degree or Above 2018']
 income_col = ['Median Household Income 2018', 'medianincome_2012']
 age_col = ['Median Age 2018']
 raw_vote_2020_col = 'Total Votes 2020 (AK is Rough Estimate)'
 
 vote_cols = ['2012votes']
-additional_cols = ['Trump 2016 %', 'Clinton 2016 %', 'white_2012', 'black_2012', 'hispanic_2012']
+additional_cols = ['Trump 2016 %', 'Clinton 2016 %', 'white_2012', 'black_2012', 'hispanic_2012', 'bachelorabove_2012']
 
 if args.target == 'swing':
     vote_cols += [raw_vote_2020_col]
@@ -96,6 +96,7 @@ if not args.exclude_race:
     national_df['changefrom_black_2012'] = national_df['Black CVAP % 2018'] - national_df['black_2012']
     national_df['changefrom_hispanic_2012'] = national_df['Hispanic CVAP % 2018'] - national_df['hispanic_2012']
 if not args.exclude_education:
+    data_cols += ['changefrom_bachelorabove_2012']
     national_df['changefrom_bachelorabove_2012'] = national_df['% Bachelor Degree or Above 2018'] - national_df['bachelorabove_2012']
 
 ## Nonlinearity
