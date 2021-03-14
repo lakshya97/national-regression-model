@@ -97,7 +97,7 @@ if not args.exclude_race:
     national_df['changefrom_hispanic_2012'] = national_df['Hispanic CVAP % 2018'] - national_df['hispanic_2012']
 if not args.exclude_education:
     data_cols += ['changefrom_bachelorabove_2012']
-    national_df['changefrom_bachelorabove_2012'] = national_df['% Bachelor Degree or Above 2018'] - national_df['bachelorabove_2012']
+    national_df['changefrom_bachelorabove_2012'] = (national_df['% Bachelor Degree or Above 2018'] - national_df['bachelorabove_2012'])/national_df['bachelorabove_2012']
 
 ## Nonlinearity
 if args.nonlinearity:
@@ -235,9 +235,9 @@ plt.gca().xaxis.set_major_locator(plt.NullLocator())
 plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
 plt.title(args.target.title() + " relative to Demographics: 2020 Presidential Election -- Regression on Education, Race, Religion, Income, Age, Urbanization, Trends, and 2016 partisanship")
-plt.figtext(0.90, 0.14, 'R^2 = ' + str(np.round(r2_score, 2)), horizontalalignment='left')
-plt.figtext(0.90, 0.11, 'Average County Error = ' + str(np.round(avg_error, 4) * 100) + '%' , horizontalalignment='left')
-plt.figtext(0.90, 0.08, '@lxeagle17', horizontalalignment='left')
-plt.figtext(0.90, 0.05, '@Thorongil16', horizontalalignment='left')
-plt.figtext(0.90, 0.02, 'Source: @Mill226', horizontalalignment='left')
+plt.figtext(0.80, 0.14, 'R^2 = ' + str(np.round(r2_score, 2)), horizontalalignment='left')
+plt.figtext(0.80, 0.11, 'Average County Error = ' + str(np.round(avg_error, 4) * 100) + '%' , horizontalalignment='left')
+plt.figtext(0.80, 0.08, '@lxeagle17', horizontalalignment='left')
+plt.figtext(0.80, 0.05, '@Thorongil16', horizontalalignment='left')
+plt.figtext(0.80, 0.02, 'Source: @Mill226', horizontalalignment='left')
 plt.show()
