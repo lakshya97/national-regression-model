@@ -77,7 +77,7 @@ if not args.exclude_age:
 
 # target to regress against
 if args.target == 'swing':
-    target_col = 'Swing 2016 to 2020'
+    target_col = 'Swing 2016 to 2020 (2-Party Margin Only)'
 else:
     target_col = 'Biden 2-Party Only 2020 Margin'
 
